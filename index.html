@@ -463,7 +463,7 @@
       <textarea
         id="singleInput"
         rows="10"
-        placeholder='{"extraction_id": "abc123", "primary_markets": "SG", ...}'
+        placeholder='{"extraction_run_id": "abc123", "primary_markets": "SG", ...}'
       ></textarea>
 
       <div class="status-bar">
@@ -604,9 +604,9 @@
 
     try {
       singleParsed = JSON.parse(raw);
-      const id = singleParsed.extraction_id;
+      const id = singleParsed.extraction_run_id;
       if (!id) {
-        setStatus('singleStatus', 'Valid JSON — extraction_id field not found', 'error');
+        setStatus('singleStatus', 'Valid JSON — extraction_run_id field not found', 'error');
         fnEl.classList.remove('visible');
         btn.disabled = true;
         return;
