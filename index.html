@@ -773,12 +773,16 @@
 
     if (all.length === 0) return;
 
+    // Flatten all trends arrays into one merged object
+    const mergedTrends = all.flatMap(b => Array.isArray(b.trends) ? b.trends : []);
+    const output = { trends: mergedTrends };
+
     const markets = [...new Set(
       all.map(b => findField(b, 'primary_markets')).filter(Boolean).map(m => String(m).trim())
     )];
     const marketStr = markets.length > 0 ? markets.join('-') : 'UNKNOWN';
     const filename = `combined_${sanitizeFilename(marketStr)}_${timestamp()}.json`;
-    downloadJSON(all, filename);
+    downloadJSON(output, filename);
   }
 
   function clearCombine() {
