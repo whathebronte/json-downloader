@@ -325,12 +325,7 @@
     }
 
     .drop-zone input[type="file"] {
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      cursor: pointer;
-      width: 100%;
-      height: 100%;
+      display: none;
     }
 
     .drop-icon {
@@ -512,13 +507,13 @@
       <!-- Upload tab -->
       <div class="tab-panel" id="tab-upload">
         <div class="drop-zone" id="dropZone">
-          <input type="file" id="fileInput" accept=".json" multiple onchange="handleFiles(this.files)" />
           <div class="drop-icon">📂</div>
           <div class="drop-label">
             <strong>Click to browse</strong> or drag &amp; drop<br/>
             Multiple .json files accepted
           </div>
         </div>
+        <input type="file" id="fileInput" accept=".json" multiple style="display:none" onchange="handleFiles(this.files)" />
         <div class="file-list" id="fileList"></div>
       </div>
 
@@ -581,8 +576,10 @@
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 100);
   }
 
   // ─── Recursive field finder ──────────────────────────────────────────────
@@ -664,6 +661,7 @@
 
   // Drag and drop
   const dropZone = document.getElementById('dropZone');
+  dropZone.addEventListener('click', () => document.getElementById('fileInput').click());
   dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
   dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
   dropZone.addEventListener('drop', e => {
