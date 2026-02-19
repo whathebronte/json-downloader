@@ -34,6 +34,7 @@
       overflow-x: hidden;
     }
 
+    /* Background grid */
     body::before {
       content: '';
       position: fixed;
@@ -54,7 +55,10 @@
       padding: 48px 24px 80px;
     }
 
-    header { margin-bottom: 56px; }
+    /* Header */
+    header {
+      margin-bottom: 56px;
+    }
 
     .header-tag {
       font-family: var(--mono);
@@ -75,7 +79,9 @@
       color: var(--text);
     }
 
-    h1 span { color: var(--accent); }
+    h1 span {
+      color: var(--accent);
+    }
 
     .header-desc {
       margin-top: 12px;
@@ -85,6 +91,7 @@
       line-height: 1.6;
     }
 
+    /* Section */
     .section {
       margin-bottom: 40px;
       border: 1px solid var(--border);
@@ -94,7 +101,9 @@
       transition: border-color 0.2s;
     }
 
-    .section:focus-within { border-color: rgba(91,91,255,0.4); }
+    .section:focus-within {
+      border-color: rgba(91,91,255,0.4);
+    }
 
     .section-header {
       display: flex;
@@ -116,9 +125,17 @@
       letter-spacing: 0.1em;
     }
 
-    .section-title { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
-    .section-body { padding: 24px; }
+    .section-title {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
 
+    .section-body {
+      padding: 24px;
+    }
+
+    /* Textarea */
     .label {
       font-family: var(--mono);
       font-size: 11px;
@@ -144,9 +161,15 @@
       outline: none;
     }
 
-    textarea::placeholder { color: var(--text-dim); }
-    textarea:focus { border-color: var(--accent); }
+    textarea::placeholder {
+      color: var(--text-dim);
+    }
 
+    textarea:focus {
+      border-color: var(--accent);
+    }
+
+    /* Status bar */
     .status-bar {
       display: flex;
       align-items: center;
@@ -167,8 +190,15 @@
     .status-msg.success { color: var(--success); }
     .status-msg.info { color: var(--text-dim); }
 
-    .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
 
+    /* Filename preview */
     .filename-preview {
       margin-top: 16px;
       padding: 12px 16px;
@@ -181,7 +211,12 @@
     }
 
     .filename-preview.visible { display: flex; }
-    .filename-preview .file-icon { font-size: 16px; opacity: 0.7; }
+
+    .filename-preview .file-icon {
+      font-size: 16px;
+      opacity: 0.7;
+    }
+
     .filename-preview .file-name {
       font-family: var(--mono);
       font-size: 12px;
@@ -190,6 +225,7 @@
       word-break: break-all;
     }
 
+    /* Button */
     .btn {
       display: inline-flex;
       align-items: center;
@@ -206,13 +242,27 @@
       white-space: nowrap;
     }
 
-    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
     .btn-primary:hover { background: #7070ff; transform: translateY(-1px); }
     .btn-primary:active { transform: translateY(0); }
     .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-    .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+
+    .btn-secondary {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
     .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
-    .btn-sm { padding: 7px 14px; font-size: 12px; }
+
+    .btn-sm {
+      padding: 7px 14px;
+      font-size: 12px;
+    }
 
     .actions {
       display: flex;
@@ -222,8 +272,10 @@
       gap: 12px;
     }
 
+    /* Section 2 extras */
     .input-tabs {
       display: flex;
+      gap: 0;
       margin-bottom: 16px;
       border: 1px solid var(--border);
       border-radius: 8px;
@@ -245,11 +297,17 @@
       transition: all 0.15s;
     }
 
-    .input-tab.active { background: rgba(91,91,255,0.12); color: var(--accent); }
+    .input-tab.active {
+      background: rgba(91,91,255,0.12);
+      color: var(--accent);
+    }
+
     .input-tab:not(.active):hover { color: var(--text); }
+
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
 
+    /* Drop zone */
     .drop-zone {
       border: 2px dashed var(--border);
       border-radius: 8px;
@@ -258,6 +316,7 @@
       cursor: pointer;
       transition: all 0.2s;
       background: var(--bg);
+      position: relative;
     }
 
     .drop-zone:hover, .drop-zone.drag-over {
@@ -265,8 +324,20 @@
       background: rgba(91,91,255,0.04);
     }
 
-    .drop-zone input[type="file"] { display: none; }
-    .drop-icon { font-size: 28px; margin-bottom: 10px; opacity: 0.5; }
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .drop-icon {
+      font-size: 28px;
+      margin-bottom: 10px;
+      opacity: 0.5;
+    }
 
     .drop-label {
       font-family: var(--mono);
@@ -275,9 +346,17 @@
       line-height: 1.6;
     }
 
-    .drop-label strong { color: var(--accent); }
+    .drop-label strong {
+      color: var(--accent);
+    }
 
-    .file-list { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+    /* File list */
+    .file-list {
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
 
     .file-item {
       display: flex;
@@ -292,6 +371,7 @@
     }
 
     .file-item .fi-name { flex: 1; color: var(--text); }
+    .file-item .fi-status { }
     .file-item .fi-status.ok { color: var(--success); }
     .file-item .fi-status.err { color: var(--error); }
 
@@ -308,6 +388,7 @@
 
     .file-item .fi-remove:hover { color: var(--error); }
 
+    /* Combined blocks preview */
     .blocks-summary {
       margin-top: 16px;
       padding: 14px 16px;
@@ -325,9 +406,17 @@
       justify-content: space-between;
     }
 
-    .blocks-count { font-family: var(--mono); font-size: 12px; color: var(--text-dim); }
-    .blocks-count strong { color: var(--accent2); }
+    .blocks-count {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-dim);
+    }
 
+    .blocks-count strong {
+      color: var(--accent2);
+    }
+
+    /* Divider */
     .or-divider {
       display: flex;
       align-items: center;
@@ -339,13 +428,15 @@
       letter-spacing: 0.15em;
     }
 
-    .or-divider::before, .or-divider::after {
+    .or-divider::before,
+    .or-divider::after {
       content: '';
       flex: 1;
       height: 1px;
       background: var(--border);
     }
 
+    /* Responsive */
     @media (max-width: 600px) {
       .actions { flex-direction: column; align-items: stretch; }
       .btn { justify-content: center; }
@@ -412,9 +503,9 @@
         <textarea
           id="combineInput"
           rows="12"
-          placeholder='{ "extraction_run_id": "abc001", "primary_markets": "SG", ... }
+          placeholder='{  "extraction_id": "abc001", "primary_markets": "SG", ... }
 
-{ "extraction_run_id": "abc002", "primary_markets": "MY", ... }'
+{  "extraction_id": "abc002", "primary_markets": "MY", ... }'
         ></textarea>
       </div>
 
@@ -431,7 +522,7 @@
         <div class="file-list" id="fileList"></div>
       </div>
 
-      <div class="or-divider">or mix both</div>
+      <div class="or-divider" id="combineDivider">or mix both</div>
 
       <div class="status-bar">
         <span class="status-msg info" id="combineStatus"></span>
@@ -439,7 +530,7 @@
 
       <div class="blocks-summary" id="blocksSummary">
         <div class="blocks-summary-row">
-          <span class="blocks-count"><strong id="blockCount">0</strong></span>
+          <span class="blocks-count">Parsed: <strong id="blockCount">0</strong> blocks</span>
           <span class="blocks-count">Markets: <strong id="marketList">—</strong></span>
         </div>
         <div class="filename-preview visible" style="margin-top:12px;background:transparent;border-color:rgba(0,229,192,0.15);">
@@ -463,7 +554,7 @@
 <script>
   // ─── State ───────────────────────────────────────────────────────────────
   let singleParsed = null;
-  let uploadedBlocks = [];
+  let uploadedBlocks = []; // { name, data }
   let activeTab = 'paste';
 
   // ─── Utilities ───────────────────────────────────────────────────────────
@@ -490,10 +581,8 @@
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;
-    document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 100);
+    URL.revokeObjectURL(url);
   }
 
   // ─── Recursive field finder ──────────────────────────────────────────────
@@ -507,32 +596,6 @@
       }
     }
     return undefined;
-  }
-
-  // ─── Robust JSON block extractor ─────────────────────────────────────────
-  // Walks character-by-character to find the first complete balanced {} object.
-  // Any trailing braces or garbage after the closing brace are ignored.
-  function extractFirstValidJSON(str) {
-    const start = str.indexOf('{');
-    if (start === -1) return null;
-    let depth = 0;
-    let inString = false;
-    let escape = false;
-    for (let i = start; i < str.length; i++) {
-      const ch = str[i];
-      if (escape) { escape = false; continue; }
-      if (ch === '\\' && inString) { escape = true; continue; }
-      if (ch === '"') { inString = !inString; continue; }
-      if (inString) continue;
-      if (ch === '{') depth++;
-      if (ch === '}') {
-        depth--;
-        if (depth === 0) {
-          try { return JSON.parse(str.slice(start, i + 1)); } catch { return null; }
-        }
-      }
-    }
-    return null;
   }
 
   // ─── Section 1 ───────────────────────────────────────────────────────────
@@ -552,27 +615,26 @@
       return;
     }
 
-    singleParsed = extractFirstValidJSON(raw);
-    if (!singleParsed) {
+    try {
+      singleParsed = JSON.parse(raw);
+      const id = findField(singleParsed, 'extraction_run_id');
+      if (!id) {
+        setStatus('singleStatus', 'Valid JSON — extraction_run_id not found in ingestion_source', 'error');
+        fnEl.classList.remove('visible');
+        btn.disabled = true;
+        return;
+      }
+      const filename = `${sanitizeFilename(id)}.json`;
+      setStatus('singleStatus', 'JSON parsed successfully', 'success');
+      fnTxt.textContent = filename;
+      fnEl.classList.add('visible');
+      btn.disabled = false;
+    } catch (e) {
+      singleParsed = null;
       setStatus('singleStatus', 'Invalid JSON — check formatting', 'error');
       fnEl.classList.remove('visible');
       btn.disabled = true;
-      return;
     }
-
-    const id = findField(singleParsed, 'extraction_run_id');
-    if (!id) {
-      setStatus('singleStatus', 'Valid JSON — extraction_run_id not found', 'error');
-      fnEl.classList.remove('visible');
-      btn.disabled = true;
-      return;
-    }
-
-    const filename = `${sanitizeFilename(id)}.json`;
-    setStatus('singleStatus', 'JSON parsed successfully', 'success');
-    fnTxt.textContent = filename;
-    fnEl.classList.add('visible');
-    btn.disabled = false;
   }
 
   function downloadSingle() {
@@ -600,9 +662,8 @@
 
   document.getElementById('combineInput').addEventListener('input', reparseAll);
 
-  // Drag and drop + click to browse
+  // Drag and drop
   const dropZone = document.getElementById('dropZone');
-  dropZone.addEventListener('click', () => document.getElementById('fileInput').click());
   dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
   dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
   dropZone.addEventListener('drop', e => {
@@ -616,9 +677,12 @@
       return new Promise((resolve) => {
         const reader = new FileReader();
         reader.onload = e => {
-          const parsed = extractFirstValidJSON(e.target.result);
-          if (parsed) resolve({ name: file.name, data: parsed, ok: true });
-          else resolve({ name: file.name, data: null, ok: false });
+          try {
+            const data = JSON.parse(e.target.result);
+            resolve({ name: file.name, data, ok: true });
+          } catch {
+            resolve({ name: file.name, data: null, ok: false });
+          }
         };
         reader.readAsText(file);
       });
@@ -626,7 +690,9 @@
 
     Promise.all(promises).then(results => {
       results.forEach(r => {
-        if (!uploadedBlocks.find(b => b.name === r.name)) uploadedBlocks.push(r);
+        if (!uploadedBlocks.find(b => b.name === r.name)) {
+          uploadedBlocks.push(r);
+        }
       });
       renderFileList();
       reparseAll();
@@ -654,23 +720,16 @@
     reparseAll();
   }
 
-  function deduplicateTrends(trends) {
-    const seen = new Set();
-    const deduped = [];
-    for (const trend of trends) {
-      const id = trend.trend_series_id || JSON.stringify(trend);
-      if (!seen.has(id)) {
-        seen.add(id);
-        deduped.push(trend);
-      }
-    }
-    return deduped;
-  }
+  function parseBlocksFromText(text) {
     const results = [];
+    // Split on blank lines between JSON objects
     const chunks = text.split(/\n\s*\n/).map(c => c.trim()).filter(Boolean);
     chunks.forEach(chunk => {
-      const parsed = extractFirstValidJSON(chunk);
-      if (parsed) results.push(parsed);
+      try {
+        results.push(JSON.parse(chunk));
+      } catch {
+        // try to collect partial valid blocks — skip invalid
+      }
     });
     return results;
   }
@@ -690,6 +749,7 @@
       return;
     }
 
+    // Extract markets
     const markets = [...new Set(
       all.map(b => findField(b, 'primary_markets')).filter(Boolean).map(m => String(m).trim())
     )];
@@ -697,12 +757,7 @@
     const marketStr = markets.length > 0 ? markets.join('-') : 'UNKNOWN';
     const filename = `combined_${sanitizeFilename(marketStr)}_${timestamp()}.json`;
 
-    const allTrends = all.flatMap(b => Array.isArray(b.trends) ? b.trends : []);
-    const dedupedTrends = deduplicateTrends(allTrends);
-    const dupCount = allTrends.length - dedupedTrends.length;
-    const dupNote = dupCount > 0 ? `, <span style="color:var(--error)">${dupCount} duplicate${dupCount > 1 ? 's' : ''} removed</span>` : '';
-
-    document.getElementById('blockCount').innerHTML = `${all.length} blocks · ${dedupedTrends.length} trends${dupNote}`;
+    document.getElementById('blockCount').textContent = all.length;
     document.getElementById('marketList').textContent = marketStr;
     document.getElementById('combineFilenameTxt').textContent = filename;
 
@@ -718,9 +773,8 @@
 
     if (all.length === 0) return;
 
-    // Flatten and deduplicate trends by trend_series_id
-    const allTrends = all.flatMap(b => Array.isArray(b.trends) ? b.trends : []);
-    const mergedTrends = deduplicateTrends(allTrends);
+    // Flatten all trends arrays into one merged object
+    const mergedTrends = all.flatMap(b => Array.isArray(b.trends) ? b.trends : []);
     const output = { trends: mergedTrends };
 
     const markets = [...new Set(
