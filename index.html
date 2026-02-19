@@ -604,9 +604,10 @@
 
     try {
       singleParsed = JSON.parse(raw);
-      const id = singleParsed.extraction_run_id;
+      const id = singleParsed?.ingestion_source?.extraction_run_id
+        || singleParsed?.trends?.[0]?.ingestion_source?.extraction_run_id;
       if (!id) {
-        setStatus('singleStatus', 'Valid JSON — extraction_run_id field not found', 'error');
+        setStatus('singleStatus', 'Valid JSON — extraction_run_id not found in ingestion_source', 'error');
         fnEl.classList.remove('visible');
         btn.disabled = true;
         return;
@@ -626,7 +627,9 @@
 
   function downloadSingle() {
     if (!singleParsed) return;
-    const filename = `${sanitizeFilename(singleParsed.extraction_id)}.json`;
+    const id = singleParsed?.ingestion_source?.extraction_run_id
+      || singleParsed?.trends?.[0]?.ingestion_source?.extraction_run_id;
+    const filename = `${sanitizeFilename(id)}.json`;
     downloadJSON(singleParsed, filename);
   }
 
