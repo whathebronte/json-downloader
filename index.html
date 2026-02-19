@@ -325,7 +325,12 @@
     }
 
     .drop-zone input[type="file"] {
-      display: none;
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
     }
 
     .drop-icon {
@@ -507,13 +512,13 @@
       <!-- Upload tab -->
       <div class="tab-panel" id="tab-upload">
         <div class="drop-zone" id="dropZone">
+          <input type="file" id="fileInput" accept=".json" multiple onchange="handleFiles(this.files)" />
           <div class="drop-icon">📂</div>
           <div class="drop-label">
             <strong>Click to browse</strong> or drag &amp; drop<br/>
             Multiple .json files accepted
           </div>
         </div>
-        <input type="file" id="fileInput" accept=".json" multiple style="display:none" onchange="handleFiles(this.files)" />
         <div class="file-list" id="fileList"></div>
       </div>
 
@@ -576,10 +581,8 @@
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;
-    document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 100);
+    URL.revokeObjectURL(url);
   }
 
   // ─── Recursive field finder ──────────────────────────────────────────────
@@ -661,7 +664,6 @@
 
   // Drag and drop
   const dropZone = document.getElementById('dropZone');
-  dropZone.addEventListener('click', () => document.getElementById('fileInput').click());
   dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
   dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
   dropZone.addEventListener('drop', e => {
@@ -718,42 +720,16 @@
     reparseAll();
   }
 
-  function extractFirstValidJSON(str) {
-    // Find the first { and try progressively longer substrings until valid JSON
-    const start = str.indexOf('{');
-    if (start === -1) return null;
-    let depth = 0;
-    let inString = false;
-    let escape = false;
-    for (let i = start; i < str.length; i++) {
-      const ch = str[i];
-      if (escape) { escape = false; continue; }
-      if (ch === '\\' && inString) { escape = true; continue; }
-      if (ch === '"') { inString = !inString; continue; }
-      if (inString) continue;
-      if (ch === '{') depth++;
-      if (ch === '}') {
-        depth--;
-        if (depth === 0) {
-          try {
-            return JSON.parse(str.slice(start, i + 1));
-          } catch {
-            return null;
-          }
-        }
-      }
-    }
-    return null;
-  }
-
   function parseBlocksFromText(text) {
     const results = [];
     // Split on blank lines between JSON objects
     const chunks = text.split(/\n\s*\n/).map(c => c.trim()).filter(Boolean);
     chunks.forEach(chunk => {
-      const parsed = extractFirstValidJSON(chunk);
-      if (parsed) results.push(parsed);
-    });
+      try {
+        results.push(JSON.parse(chunk));
+      } catch {
+        // try to collect partial valid blocks — skip invalid
+      }
     });
     return results;
   }
