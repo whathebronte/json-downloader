@@ -720,16 +720,42 @@
     reparseAll();
   }
 
+  function extractFirstValidJSON(str) {
+    // Find the first { and try progressively longer substrings until valid JSON
+    const start = str.indexOf('{');
+    if (start === -1) return null;
+    let depth = 0;
+    let inString = false;
+    let escape = false;
+    for (let i = start; i < str.length; i++) {
+      const ch = str[i];
+      if (escape) { escape = false; continue; }
+      if (ch === '\\' && inString) { escape = true; continue; }
+      if (ch === '"') { inString = !inString; continue; }
+      if (inString) continue;
+      if (ch === '{') depth++;
+      if (ch === '}') {
+        depth--;
+        if (depth === 0) {
+          try {
+            return JSON.parse(str.slice(start, i + 1));
+          } catch {
+            return null;
+          }
+        }
+      }
+    }
+    return null;
+  }
+
   function parseBlocksFromText(text) {
     const results = [];
     // Split on blank lines between JSON objects
     const chunks = text.split(/\n\s*\n/).map(c => c.trim()).filter(Boolean);
     chunks.forEach(chunk => {
-      try {
-        results.push(JSON.parse(chunk));
-      } catch {
-        // try to collect partial valid blocks — skip invalid
-      }
+      const parsed = extractFirstValidJSON(chunk);
+      if (parsed) results.push(parsed);
+    });
     });
     return results;
   }
