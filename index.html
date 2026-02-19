@@ -585,6 +585,19 @@
     URL.revokeObjectURL(url);
   }
 
+  // ─── Recursive field finder ──────────────────────────────────────────────
+  function findField(obj, key) {
+    if (obj === null || typeof obj !== 'object') return undefined;
+    if (key in obj) return obj[key];
+    for (const v of Object.values(obj)) {
+      if (typeof v === 'object') {
+        const found = findField(v, key);
+        if (found !== undefined) return found;
+      }
+    }
+    return undefined;
+  }
+
   // ─── Section 1 ───────────────────────────────────────────────────────────
   document.getElementById('singleInput').addEventListener('input', parseSingle);
 
@@ -604,8 +617,7 @@
 
     try {
       singleParsed = JSON.parse(raw);
-      const id = singleParsed?.ingestion_source?.extraction_run_id
-        || singleParsed?.trends?.[0]?.ingestion_source?.extraction_run_id;
+      const id = findField(singleParsed, 'extraction_run_id');
       if (!id) {
         setStatus('singleStatus', 'Valid JSON — extraction_run_id not found in ingestion_source', 'error');
         fnEl.classList.remove('visible');
@@ -627,8 +639,7 @@
 
   function downloadSingle() {
     if (!singleParsed) return;
-    const id = singleParsed?.ingestion_source?.extraction_run_id
-      || singleParsed?.trends?.[0]?.ingestion_source?.extraction_run_id;
+    const id = findField(singleParsed, 'extraction_run_id');
     const filename = `${sanitizeFilename(id)}.json`;
     downloadJSON(singleParsed, filename);
   }
@@ -740,7 +751,7 @@
 
     // Extract markets
     const markets = [...new Set(
-      all.map(b => b.primary_markets).filter(Boolean).map(m => String(m).trim())
+      all.map(b => findField(b, 'primary_markets')).filter(Boolean).map(m => String(m).trim())
     )];
 
     const marketStr = markets.length > 0 ? markets.join('-') : 'UNKNOWN';
@@ -763,7 +774,7 @@
     if (all.length === 0) return;
 
     const markets = [...new Set(
-      all.map(b => b.primary_markets).filter(Boolean).map(m => String(m).trim())
+      all.map(b => findField(b, 'primary_markets')).filter(Boolean).map(m => String(m).trim())
     )];
     const marketStr = markets.length > 0 ? markets.join('-') : 'UNKNOWN';
     const filename = `combined_${sanitizeFilename(marketStr)}_${timestamp()}.json`;
