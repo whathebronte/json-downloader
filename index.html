@@ -449,7 +449,13 @@
   // ─── State ───────────────────────────────────────────────────────────────
   let singleParsed = null;
   let uploadedBlocks = [];
-  let activeTab = 'paste';
+  // combinedState caches the last reparseAll() result so downloadCombined()
+  // doesn't need to re-parse independently, preventing filename drift.
+  let combinedState = null;
+
+  // ─── Constants ───────────────────────────────────────────────────────────
+  const MAX_SINGLE_CHARS = 5 * 1024 * 1024;   // 5 MB text limit for single input
+  const MAX_FILE_BYTES   = 10 * 1024 * 1024;  // 10 MB per uploaded file
 
   // ─── Utilities ───────────────────────────────────────────────────────────
   function setStatus(id, msg, type) {
@@ -465,8 +471,13 @@
       String(d.getDate()).padStart(2, '0');
   }
 
+  // Trim leading/trailing underscores that result from special characters at
+  // the boundaries of the input string (e.g. " abc" → "_abc" → "abc").
   function sanitizeFilename(str) {
-    return String(str).replace(/[^a-zA-Z0-9_\-]/g, '_').replace(/_+/g, '_');
+    return String(str)
+      .replace(/[^a-zA-Z0-9_\-]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '');
   }
 
   function downloadJSON(data, filename) {
@@ -485,9 +496,10 @@
   function findField(obj, key) {
     if (obj === null || typeof obj !== 'object') return undefined;
     if (key in obj) return obj[key];
-    for (var i = 0, vals = Object.values(obj); i < vals.length; i++) {
+    const vals = Object.values(obj);
+    for (let i = 0; i < vals.length; i++) {
       if (typeof vals[i] === 'object') {
-        var found = findField(vals[i], key);
+        const found = findField(vals[i], key);
         if (found !== undefined) return found;
       }
     }
@@ -495,19 +507,28 @@
   }
 
   // ─── Robust JSON extractor ───────────────────────────────────────────────
-  // Finds the first complete balanced {} in a string, ignores trailing chars.
+  // Finds the first complete balanced {…} or […] block in a string,
+  // ignoring any surrounding text or trailing characters.
   function extractFirstValidJSON(str) {
-    var start = str.indexOf('{');
-    if (start === -1) return null;
-    var depth = 0, inString = false, escape = false;
-    for (var i = start; i < str.length; i++) {
-      var ch = str[i];
+    const objStart = str.indexOf('{');
+    const arrStart = str.indexOf('[');
+
+    let start, openChar, closeChar;
+    if (objStart === -1 && arrStart === -1) return null;
+    if (objStart === -1)        { start = arrStart; openChar = '['; closeChar = ']'; }
+    else if (arrStart === -1)   { start = objStart; openChar = '{'; closeChar = '}'; }
+    else if (arrStart < objStart) { start = arrStart; openChar = '['; closeChar = ']'; }
+    else                          { start = objStart; openChar = '{'; closeChar = '}'; }
+
+    let depth = 0, inString = false, escape = false;
+    for (let i = start; i < str.length; i++) {
+      const ch = str[i];
       if (escape) { escape = false; continue; }
       if (ch === '\\' && inString) { escape = true; continue; }
       if (ch === '"') { inString = !inString; continue; }
       if (inString) continue;
-      if (ch === '{') depth++;
-      if (ch === '}') {
+      if (ch === openChar) depth++;
+      if (ch === closeChar) {
         depth--;
         if (depth === 0) {
           try { return JSON.parse(str.slice(start, i + 1)); } catch(e) { return null; }
@@ -519,11 +540,11 @@
 
   // ─── Deduplication ───────────────────────────────────────────────────────
   function deduplicateTrends(trends) {
-    var seen = {};
-    var deduped = [];
-    for (var i = 0; i < trends.length; i++) {
-      var trend = trends[i];
-      var id = trend.trend_series_id ? String(trend.trend_series_id) : JSON.stringify(trend);
+    const seen = {};
+    const deduped = [];
+    for (let i = 0; i < trends.length; i++) {
+      const trend = trends[i];
+      const id = trend.trend_series_id ? String(trend.trend_series_id) : JSON.stringify(trend);
       if (!seen[id]) {
         seen[id] = true;
         deduped.push(trend);
@@ -534,12 +555,12 @@
 
   // ─── Parse text blocks ───────────────────────────────────────────────────
   function parseBlocksFromText(text) {
-    var results = [];
-    var chunks = text.split(/\n\s*\n/);
-    for (var i = 0; i < chunks.length; i++) {
-      var chunk = chunks[i].trim();
+    const results = [];
+    const chunks = text.split(/\n\s*\n/);
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i].trim();
       if (!chunk) continue;
-      var parsed = extractFirstValidJSON(chunk);
+      const parsed = extractFirstValidJSON(chunk);
       if (parsed) results.push(parsed);
     }
     return results;
@@ -549,13 +570,21 @@
   document.getElementById('singleInput').addEventListener('input', parseSingle);
 
   function parseSingle() {
-    var raw = document.getElementById('singleInput').value.trim();
-    var fnEl = document.getElementById('singleFilename');
-    var fnTxt = document.getElementById('singleFilenameTxt');
-    var btn = document.getElementById('singleDownloadBtn');
+    const raw = document.getElementById('singleInput').value.trim();
+    const fnEl = document.getElementById('singleFilename');
+    const fnTxt = document.getElementById('singleFilenameTxt');
+    const btn = document.getElementById('singleDownloadBtn');
 
     if (!raw) {
       setStatus('singleStatus', '', 'info');
+      fnEl.classList.remove('visible');
+      btn.disabled = true;
+      singleParsed = null;
+      return;
+    }
+
+    if (raw.length > MAX_SINGLE_CHARS) {
+      setStatus('singleStatus', 'Input too large — max 5 MB', 'error');
       fnEl.classList.remove('visible');
       btn.disabled = true;
       singleParsed = null;
@@ -570,7 +599,7 @@
       return;
     }
 
-    var id = findField(singleParsed, 'extraction_run_id');
+    const id = findField(singleParsed, 'extraction_run_id');
     if (!id) {
       setStatus('singleStatus', 'Valid JSON — extraction_run_id not found', 'error');
       fnEl.classList.remove('visible');
@@ -578,7 +607,7 @@
       return;
     }
 
-    var filename = sanitizeFilename(id) + '.json';
+    const filename = sanitizeFilename(id) + '.json';
     setStatus('singleStatus', 'JSON parsed successfully', 'success');
     fnTxt.textContent = filename;
     fnEl.classList.add('visible');
@@ -587,8 +616,8 @@
 
   function downloadSingle() {
     if (!singleParsed) return;
-    var id = findField(singleParsed, 'extraction_run_id');
-    var filename = sanitizeFilename(id) + '.json';
+    const id = findField(singleParsed, 'extraction_run_id');
+    const filename = sanitizeFilename(id) + '.json';
     downloadJSON(singleParsed, filename);
   }
 
@@ -598,9 +627,11 @@
   }
 
   // ─── Section 2 ───────────────────────────────────────────────────────────
+  // Both paste and upload inputs are always merged regardless of the active
+  // tab (the "or mix both" divider makes this intentional). activeTab only
+  // controls which input panel is visible.
   function switchTab(tab) {
-    activeTab = tab;
-    var tabs = document.querySelectorAll('.input-tab');
+    const tabs = document.querySelectorAll('.input-tab');
     tabs[0].classList.toggle('active', tab === 'paste');
     tabs[1].classList.toggle('active', tab === 'upload');
     document.getElementById('tab-paste').classList.toggle('active', tab === 'paste');
@@ -610,7 +641,7 @@
 
   document.getElementById('combineInput').addEventListener('input', reparseAll);
 
-  var dropZone = document.getElementById('dropZone');
+  const dropZone = document.getElementById('dropZone');
   dropZone.addEventListener('click', function() { document.getElementById('fileInput').click(); });
   dropZone.addEventListener('dragover', function(e) { e.preventDefault(); dropZone.classList.add('drag-over'); });
   dropZone.addEventListener('dragleave', function() { dropZone.classList.remove('drag-over'); });
@@ -621,11 +652,15 @@
   });
 
   function handleFiles(files) {
-    var promises = Array.from(files).map(function(file) {
+    const promises = Array.from(files).map(function(file) {
       return new Promise(function(resolve) {
-        var reader = new FileReader();
+        if (file.size > MAX_FILE_BYTES) {
+          resolve({ name: file.name, data: null, ok: false, error: 'File too large (max 10 MB)' });
+          return;
+        }
+        const reader = new FileReader();
         reader.onload = function(e) {
-          var parsed = extractFirstValidJSON(e.target.result);
+          const parsed = extractFirstValidJSON(e.target.result);
           if (parsed) resolve({ name: file.name, data: parsed, ok: true });
           else resolve({ name: file.name, data: null, ok: false });
         };
@@ -644,16 +679,32 @@
     });
   }
 
+  // Builds file list items using DOM methods to avoid XSS from untrusted filenames.
   function renderFileList() {
-    var list = document.getElementById('fileList');
+    const list = document.getElementById('fileList');
     list.innerHTML = '';
     uploadedBlocks.forEach(function(b, i) {
-      var item = document.createElement('div');
+      const item = document.createElement('div');
       item.className = 'file-item';
-      item.innerHTML =
-        '<span class="fi-name">📄 ' + b.name + '</span>' +
-        '<span class="fi-status ' + (b.ok ? 'ok' : 'err') + '">' + (b.ok ? '✓ valid' : '✗ invalid') + '</span>' +
-        '<button class="fi-remove" onclick="removeFile(' + i + ')" title="Remove">✕</button>';
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'fi-name';
+      nameSpan.textContent = '📄 ' + b.name;
+
+      const statusSpan = document.createElement('span');
+      const statusText = b.ok ? '✓ valid' : ('✗ ' + (b.error || 'invalid'));
+      statusSpan.className = 'fi-status ' + (b.ok ? 'ok' : 'err');
+      statusSpan.textContent = statusText;
+
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'fi-remove';
+      removeBtn.title = 'Remove';
+      removeBtn.textContent = '✕';
+      removeBtn.addEventListener('click', function() { removeFile(i); });
+
+      item.appendChild(nameSpan);
+      item.appendChild(statusSpan);
+      item.appendChild(removeBtn);
       list.appendChild(item);
     });
   }
@@ -664,39 +715,45 @@
     reparseAll();
   }
 
+  // Parses all inputs and caches the result in combinedState so that
+  // downloadCombined() can reuse it without re-parsing independently.
   function reparseAll() {
-    var pastedBlocks = parseBlocksFromText(document.getElementById('combineInput').value);
-    var uploadValid = uploadedBlocks.filter(function(b) { return b.ok; }).map(function(b) { return b.data; });
-    var all = pastedBlocks.concat(uploadValid);
+    const pastedBlocks = parseBlocksFromText(document.getElementById('combineInput').value);
+    const uploadValid = uploadedBlocks.filter(function(b) { return b.ok; }).map(function(b) { return b.data; });
+    const all = pastedBlocks.concat(uploadValid);
 
-    var summary = document.getElementById('blocksSummary');
-    var btn = document.getElementById('combineDownloadBtn');
+    const summary = document.getElementById('blocksSummary');
+    const btn = document.getElementById('combineDownloadBtn');
 
     if (all.length === 0) {
       setStatus('combineStatus', '', 'info');
       summary.classList.remove('visible');
       btn.disabled = true;
+      combinedState = null;
       return;
     }
 
-    var allTrends = [];
+    let allTrends = [];
     all.forEach(function(b) {
       if (Array.isArray(b.trends)) allTrends = allTrends.concat(b.trends);
     });
-    var dedupedTrends = deduplicateTrends(allTrends);
-    var dupCount = allTrends.length - dedupedTrends.length;
+    const dedupedTrends = deduplicateTrends(allTrends);
+    const dupCount = allTrends.length - dedupedTrends.length;
 
-    var markets = [];
+    const markets = [];
     all.forEach(function(b) {
-      var m = findField(b, 'primary_markets');
+      const m = findField(b, 'primary_markets');
       if (m && markets.indexOf(String(m).trim()) === -1) markets.push(String(m).trim());
     });
 
-    var marketStr = markets.length > 0 ? markets.join('-') : 'UNKNOWN';
-    var filename = 'combined_' + sanitizeFilename(marketStr) + '_' + timestamp() + '.json';
+    const marketStr = markets.length > 0 ? markets.join('-') : 'UNKNOWN';
+    const filename = 'combined_' + sanitizeFilename(marketStr) + '_' + timestamp() + '.json';
 
-    var countEl = document.getElementById('blockCount');
-    var dupNote = dupCount > 0
+    // Cache parsed state for downloadCombined()
+    combinedState = { trends: dedupedTrends, filename: filename };
+
+    const countEl = document.getElementById('blockCount');
+    const dupNote = dupCount > 0
       ? ' &nbsp;<span style="color:var(--error)">· ' + dupCount + ' duplicate' + (dupCount > 1 ? 's' : '') + ' removed</span>'
       : '';
     countEl.innerHTML = all.length + ' block' + (all.length > 1 ? 's' : '') + ' · ' + dedupedTrends.length + ' trend' + (dedupedTrends.length !== 1 ? 's' : '') + dupNote;
@@ -709,29 +766,11 @@
     btn.disabled = false;
   }
 
+  // Uses combinedState computed by the last reparseAll() call, so the
+  // downloaded filename always matches what was shown in the preview.
   function downloadCombined() {
-    var pastedBlocks = parseBlocksFromText(document.getElementById('combineInput').value);
-    var uploadValid = uploadedBlocks.filter(function(b) { return b.ok; }).map(function(b) { return b.data; });
-    var all = pastedBlocks.concat(uploadValid);
-
-    if (all.length === 0) return;
-
-    var allTrends = [];
-    all.forEach(function(b) {
-      if (Array.isArray(b.trends)) allTrends = allTrends.concat(b.trends);
-    });
-    var mergedTrends = deduplicateTrends(allTrends);
-    var output = { trends: mergedTrends };
-
-    var markets = [];
-    all.forEach(function(b) {
-      var m = findField(b, 'primary_markets');
-      if (m && markets.indexOf(String(m).trim()) === -1) markets.push(String(m).trim());
-    });
-    var marketStr = markets.length > 0 ? markets.join('-') : 'UNKNOWN';
-    var filename = 'combined_' + sanitizeFilename(marketStr) + '_' + timestamp() + '.json';
-
-    downloadJSON(output, filename);
+    if (!combinedState) return;
+    downloadJSON({ trends: combinedState.trends }, combinedState.filename);
   }
 
   function clearCombine() {
