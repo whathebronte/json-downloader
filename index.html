@@ -538,6 +538,50 @@
     return null;
   }
 
+  // Finds ALL complete balanced {…} or […] blocks in a string.
+  // Unlike extractFirstValidJSON, this continues scanning after each
+  // match so back-to-back blocks (with or without blank-line separators)
+  // are all detected. This fixes block detection on platforms where
+  // pasted text may not include blank lines between JSON objects.
+  function extractAllValidJSON(str) {
+    const results = [];
+    var pos = 0;
+    while (pos < str.length) {
+      var objStart = str.indexOf('{', pos);
+      var arrStart = str.indexOf('[', pos);
+
+      var start, openChar, closeChar;
+      if (objStart === -1 && arrStart === -1) break;
+      if (objStart === -1)          { start = arrStart; openChar = '['; closeChar = ']'; }
+      else if (arrStart === -1)     { start = objStart; openChar = '{'; closeChar = '}'; }
+      else if (arrStart < objStart) { start = arrStart; openChar = '['; closeChar = ']'; }
+      else                          { start = objStart; openChar = '{'; closeChar = '}'; }
+
+      var depth = 0, inString = false, escape = false, found = false;
+      for (var i = start; i < str.length; i++) {
+        var ch = str[i];
+        if (escape) { escape = false; continue; }
+        if (ch === '\\' && inString) { escape = true; continue; }
+        if (ch === '"') { inString = !inString; continue; }
+        if (inString) continue;
+        if (ch === openChar) depth++;
+        if (ch === closeChar) {
+          depth--;
+          if (depth === 0) {
+            try {
+              results.push(JSON.parse(str.slice(start, i + 1)));
+            } catch(e) { /* not valid JSON, skip this block */ }
+            pos = i + 1;
+            found = true;
+            break;
+          }
+        }
+      }
+      if (!found) break;
+    }
+    return results;
+  }
+
   // ─── Deduplication ───────────────────────────────────────────────────────
   function deduplicateTrends(trends) {
     const seen = {};
@@ -554,16 +598,12 @@
   }
 
   // ─── Parse text blocks ───────────────────────────────────────────────────
+  // Scans the full input text for all valid JSON blocks instead of relying
+  // solely on blank-line splitting. This ensures blocks separated by a
+  // single newline (or no separator at all) are still detected — fixing
+  // cross-platform paste issues where blank lines may not be preserved.
   function parseBlocksFromText(text) {
-    const results = [];
-    const chunks = text.split(/\n\s*\n/);
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i].trim();
-      if (!chunk) continue;
-      const parsed = extractFirstValidJSON(chunk);
-      if (parsed) results.push(parsed);
-    }
-    return results;
+    return extractAllValidJSON(text);
   }
 
   // ─── Section 1 ───────────────────────────────────────────────────────────
