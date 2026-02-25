@@ -557,8 +557,13 @@
   // match so back-to-back blocks (with or without blank-line separators)
   // are all detected. This fixes block detection on platforms where
   // pasted text may not include blank lines between JSON objects.
+  //
+  // Returns { blocks: Array, skipped: Number } where skipped counts
+  // bracket-balanced regions that failed JSON.parse (encoding issues,
+  // non-JSON text with brackets, etc.).
   function extractAllValidJSON(str) {
     const results = [];
+    var skipped = 0;
     var pos = 0;
     while (pos < str.length) {
       var objStart = str.indexOf('{', pos);
@@ -584,16 +589,19 @@
           if (depth === 0) {
             try {
               results.push(JSON.parse(str.slice(start, i + 1)));
-            } catch(e) { /* not valid JSON, skip this block */ }
+            } catch(e) { skipped++; }
             pos = i + 1;
             found = true;
             break;
           }
         }
       }
-      if (!found) break;
+      // If brackets never balanced (e.g. stray bracket from surrounding
+      // text), skip past this opening bracket and keep scanning so that
+      // subsequent valid blocks aren't missed.
+      if (!found) { pos = start + 1; }
     }
-    return results;
+    return { blocks: results, skipped: skipped };
   }
 
   // ─── Deduplication ───────────────────────────────────────────────────────
@@ -616,8 +624,28 @@
   // solely on blank-line splitting. This ensures blocks separated by a
   // single newline (or no separator at all) are still detected — fixing
   // cross-platform paste issues where blank lines may not be preserved.
+  // Returns { blocks: Array, skipped: Number }.
   function parseBlocksFromText(text) {
     return extractAllValidJSON(text);
+  }
+
+  // Unwraps a flat list of parsed JSON values so that array-root blocks
+  // (e.g. [{…}, {…}]) have their elements promoted to top-level blocks.
+  // This ensures pasting an array of objects (or uploading a file that
+  // contains one) produces the expected per-object block count.
+  function unwrapBlocks(blocks) {
+    var out = [];
+    for (var i = 0; i < blocks.length; i++) {
+      var b = blocks[i];
+      if (Array.isArray(b)) {
+        for (var j = 0; j < b.length; j++) {
+          if (b[j] && typeof b[j] === 'object' && !Array.isArray(b[j])) out.push(b[j]);
+        }
+      } else {
+        out.push(b);
+      }
+    }
+    return out;
   }
 
   // ─── Section 1 ───────────────────────────────────────────────────────────
@@ -772,9 +800,14 @@
   // Parses all inputs and caches the result in combinedState so that
   // downloadCombined() can reuse it without re-parsing independently.
   function reparseAll() {
-    const pastedBlocks = parseBlocksFromText(document.getElementById('combineInput').value);
+    const parseResult = parseBlocksFromText(document.getElementById('combineInput').value);
+    const pastedBlocks = parseResult.blocks;
+    const skippedCount = parseResult.skipped;
     const uploadValid = uploadedBlocks.filter(function(b) { return b.ok; }).map(function(b) { return b.data; });
-    const all = pastedBlocks.concat(uploadValid);
+
+    // Unwrap array-root blocks so that e.g. [{…},{…}] becomes two blocks
+    // instead of one opaque array where .trends would be undefined.
+    const all = unwrapBlocks(pastedBlocks.concat(uploadValid));
 
     const summary = document.getElementById('blocksSummary');
     const btn = document.getElementById('combineDownloadBtn');
@@ -782,7 +815,11 @@
     if (all.length === 0) {
       const hasText = document.getElementById('combineInput').value.trim().length > 0;
       if (hasText) {
-        setStatus('combineStatus', 'No valid JSON blocks found — check formatting', 'error');
+        var errMsg = 'No valid JSON blocks found — check formatting';
+        if (skippedCount > 0) {
+          errMsg += ' (' + skippedCount + ' region' + (skippedCount > 1 ? 's' : '') + ' looked like JSON but failed to parse)';
+        }
+        setStatus('combineStatus', errMsg, 'error');
       } else {
         setStatus('combineStatus', '', 'info');
       }
@@ -793,9 +830,18 @@
       return;
     }
 
+    // Extract trends from each block.  Use recursive findField so that
+    // trends nested inside a wrapper (e.g. { data: { trends: [...] } })
+    // are still discovered.  If a block has no trends array but carries
+    // a trend_series_id it is treated as a standalone trend itself.
     let allTrends = [];
     all.forEach(function(b) {
-      if (Array.isArray(b.trends)) allTrends = allTrends.concat(b.trends);
+      var trends = findField(b, 'trends');
+      if (Array.isArray(trends)) {
+        allTrends = allTrends.concat(trends);
+      } else if (b.trend_series_id) {
+        allTrends.push(b);
+      }
     });
     const dedupedTrends = deduplicateTrends(allTrends);
     const dupCount = allTrends.length - dedupedTrends.length;
@@ -816,8 +862,15 @@
     countEl.innerHTML = all.length + ' block' + (all.length > 1 ? 's' : '') + ' · ' + dedupedTrends.length + ' trend' + (dedupedTrends.length !== 1 ? 's' : '');
 
     const dupBanner = document.getElementById('dupBanner');
+    var bannerParts = [];
     if (dupCount > 0) {
-      dupBanner.textContent = dupCount + ' duplicate trend' + (dupCount > 1 ? 's' : '') + ' removed (matched by trend_series_id)';
+      bannerParts.push(dupCount + ' duplicate trend' + (dupCount > 1 ? 's' : '') + ' removed (matched by trend_series_id)');
+    }
+    if (skippedCount > 0) {
+      bannerParts.push(skippedCount + ' malformed JSON region' + (skippedCount > 1 ? 's' : '') + ' skipped');
+    }
+    if (bannerParts.length > 0) {
+      dupBanner.textContent = bannerParts.join(' · ');
       dupBanner.classList.add('visible');
     } else {
       dupBanner.textContent = '';
